@@ -50,10 +50,22 @@ def linearize_notehead(
     
     graphemes.append(notehead)
 
-    # "suffix" graphemes
+    # # "suffix" graphemes
+    # for c in children:
+    #     if c.clsname in ["stem", "duration-dot", "staccato-dot", "tenuto", \
+    #             "accent", "trill", "fermata"]:
+    #         graphemes.append(c)
+
+def linearize_key_signature(
+    key_signature: CropObject,
+    cropobjects: List[CropObject],
+    graphemes: List[CropObject]
+):
+    children: List[CropObject] = key_signature.get_outlink_objects(cropobjects)
+    children.sort(key=lambda o: o.left)
+    
     for c in children:
-        if c.clsname in ["stem", "duration-dot", "staccato-dot", "tenuto", \
-                "accent", "trill", "fermata"]:
+        if c.clsname != "staff":
             graphemes.append(c)
 
 def linearize_staff(img, staff: CropObject, cropobjects: List[CropObject]):
@@ -64,14 +76,16 @@ def linearize_staff(img, staff: CropObject, cropobjects: List[CropObject]):
     
     graphemes: List[CropObject] = []
     for tree in forest:
-        if tree.clsname in ["notehead-full", "notehead-empty"]:
+        if tree.clsname in ["notehead-full", "notehead-empty", "grace-notehead-full", "grace-notehead-empty"]:
             linearize_notehead(tree, cropobjects, graphemes)
         elif tree.clsname.endswith("_rest"):
             graphemes.append(tree)
         elif tree.clsname.endswith("-clef"):
             graphemes.append(tree)
-        elif tree.clsname in ["key_signature", "time_signature"]:
-            graphemes.append(tree)
+        elif tree.clsname == "key_signature":
+            linearize_key_signature(tree, cropobjects, graphemes)
+        # elif tree.clsname == "time_signature":
+        #     graphemes.append(tree)
         elif tree.clsname in ["thin_barline", "thick_barline", \
                 "measure_separator", "repeat", "repeat-dot", "dotted_barline"]:
             graphemes.append(tree)
@@ -87,6 +101,8 @@ def linearize_staff(img, staff: CropObject, cropobjects: List[CropObject]):
         delta = middle - location
         location = middle
         transitions.append(Transition(delta))
+
+        draw_bbox(img, g, (0, 255, 0))
     
     draw_transitions(img, transitions, origin)
 
