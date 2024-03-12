@@ -1,1 +1,5 @@
 muscima
+opencv-python
+numpy
+scikit-image
+matplotlib
