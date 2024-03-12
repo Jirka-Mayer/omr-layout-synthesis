@@ -1,6 +1,15 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
+from muscima.cropobject import CropObject
+
+
+def vectorize_enum(TEnum, value: Optional[Enum]) -> List[float]:
+    values = list(TEnum)
+    vector = [0.0] * len(values)
+    if value is not None:
+        vector[values.index(value)] = 1.0
+    return vector
 
 
 class Vector2:
@@ -18,6 +27,16 @@ class Vector2:
     
     def __repr__(self):
         return f"Vector2({self.x}, {self.y})"
+
+    @staticmethod
+    def vectorize_optional(v: Optional["Vector2"]) -> List[float]:
+        if v is None:
+            return [0.0, 0.0, 0.0]
+        else:
+            return [1.0, float(v.x), float(v.y)]
+    
+    def vectorize(self) -> List[float]:
+        return [float(self.x), float(self.y)]
     
     def __add__(self, other):
         if isinstance(other, Vector2):
@@ -81,6 +100,7 @@ class Transition:
 # 2) What I want to do ... Intent
 # 3) What I do ........... Action
 
+
 class GraphemeType(str, Enum):
     # TODO: should be defined stricter for production
     ledgerLine = "ledgerLine"
@@ -99,6 +119,9 @@ class GraphemeType(str, Enum):
     beam = "beam"
     dot = "dot"
     barline = "barline"
+    sharp = "sharp"
+    flat = "flat"
+    natural = "natural"
 
 
 class GraphemeAnchorType(str, Enum):
@@ -106,6 +129,14 @@ class GraphemeAnchorType(str, Enum):
     primary = "primary" # all graphemes have it; usually its geometric center
     secondary = "secondary" # slur end, barline end, etc...
     # add more if necessary
+
+
+@dataclass
+class Grapheme:
+    """The smallest graphical unit"""
+    co: CropObject
+    grapheme_type: GraphemeType
+    anchor_types: List[GraphemeAnchorType]
 
 
 @dataclass
@@ -142,6 +173,15 @@ class Situation:
     """We just placed a grapheme, what is its width? Useful for wide
     object adjustments."""
 
+    def vectorize(self) -> List[float]:
+        return [
+            *self.position_in_measure.vectorize(),
+            *Vector2.vectorize_optional(self.position_from_last_notehead),
+            *vectorize_enum(GraphemeType, self.this_grapheme),
+            *vectorize_enum(GraphemeAnchorType, self.this_anchor_type),
+            float(self.this_grapheme_width)
+        ]
+
 
 @dataclass
 class Intent:
@@ -161,6 +201,12 @@ class Intent:
 
     # TODO: next note in chord or just another note?
 
+    def vectorize(self) -> List[float]:
+        return [
+            *vectorize_enum(GraphemeType, self.grapheme),
+            *vectorize_enum(GraphemeAnchorType, self.anchor_type)
+        ]
+
 
 @dataclass
 class Action:
@@ -171,3 +217,8 @@ class Action:
     position_jump: Vector2
     """Where should we jump to place the next anchor point? Or rather,
     what is its position relative to our current position?"""
+
+    def vectorize(self) -> List[float]:
+        return [
+            *self.position_jump.vectorize()
+        ]

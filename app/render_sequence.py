@@ -119,9 +119,30 @@ cropobjects: List[CropObject] = parse_cropobject_list(cropobjects_path)
 staves: List[CropObject] = [obj for obj in cropobjects if obj.clsname == "staff"]
 staff = staves[0]
 
+from .encode_staff import encode_staff
+situations, intents, actions, graphemes = encode_staff(staff, cropobjects)
+
+# render debug image
 img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 # draw_bbox(img, staff, (255, 0, 0))
-linearize_staff(img, staff, cropobjects)
+
+for g in graphemes:
+    draw_bbox(img, g.co, (0, 255, 0))
+
+position = situations[0].position_in_measure
+for a in actions:
+    start = position
+    end = position + a.position_jump
+    start = start * (staff.bottom - staff.top) + Vector2(staff.left, (staff.top + staff.bottom) / 2)
+    end = end * (staff.bottom - staff.top) + Vector2(staff.left, (staff.top + staff.bottom) / 2)
+    cv2.line(
+        img,
+        (int(start.x), int(start.y)),
+        (int(end.x), int(end.y)),
+        (255, 0, 0),
+        2
+    )
+    position += a.position_jump
 
 plt.imshow(img)
 plt.show()
